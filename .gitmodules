@@ -1,0 +1,6 @@
+[submodule "autoconf-2.69-or-later-compatible"]
+	path = autoconf-2.69-or-later-compatible
+	url = git://git.sv.gnu.org/autoconf
+[submodule "autoconf-2.64"]
+	path = autoconf-2.64
+	url = git://git.sv.gnu.org/autoconf

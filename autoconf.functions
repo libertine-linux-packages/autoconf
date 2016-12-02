@@ -1,0 +1,889 @@
+# This file is part of libertine linux's package autoconf. It is subject to the licence terms in the COPYRIGHT file found in the top-level directory of this distribution and at https://raw.githubusercontent.com/libertine-linux-packages/libertine/master/COPYRIGHT. No part of libertine linux's package autoconf, including this file, may be copied, modified, propagated, or distributed except according to the terms contained in the COPYRIGHT file.
+# Copyright © 2016 The developers of libertine linux's package autoconf. See the COPYRIGHT file in the top-level directory of this distribution and at https://raw.githubusercontent.com/libertine-linux-packages/libertine/master/COPYRIGHT.
+
+
+
+depends build_perl
+build_needs perl
+
+depends build_gnum4
+build_needs m4
+
+case "$package" in
+	
+	build_*)
+		:
+	;;
+	
+	*)
+		depends perl
+	;;
+	
+esac
+
+case "$package" in
+	
+	build_autoconf213|autoconf213)
+		
+		variant=autoconf-2.13
+		
+		build_needs mkdir tail chmod cat
+		_libertine_compile_autoconf213_internal()
+		{
+			local packageInstalledFolderPath="$1"
+	
+			local packageBuildFolderPath="$(libertine_public_sourcePath)"
+	
+			# We no longer use ./configure, make install as it's complete rubbish for such a simple problem
+		
+			local binPath="$packageInstalledFolderPath"/bin
+			mkdir -m 0755 -p "$binPath"
+	
+			local acdatapath="$packageInstalledFolderPath"/share/autoconf
+			mkdir -m 0755 -p "$acdatapath"
+	
+			local AUTOCONF_SHELL_RELATIVE_DATA_PATH='"$_program_path"/../share/autoconf'
+			local replaceDataDirWithConstant="$(_libertine_compile_autoconf213_sed_replaceWithConstant datadir $AUTOCONF_SHELL_RELATIVE_DATA_PATH)"
+			local replaceM4WithConstant="$(_libertine_compile_autoconf213_sed_replaceWithConstant M4 m4)"
+			local replaceAwkWithConstant="$(_libertine_compile_autoconf213_sed_replaceWithConstant AWK awk)"
+	
+			local shellScriptFile
+			for shellScriptFile in autoconf autoheader autoreconf autoupdate ifnames
+			do
+				local destinationShellScriptFile="$binPath"/"$shellScriptFile"
+				{
+					_libertine_compile_autoconf213_patchToMakeShellScriptRelative
+					tail -n +2 "$packageBuildFolderPath"/"$shellScriptFile".sh | _libertine_compile_autoconf213_sed \
+						"$replaceDataDirWithConstant" \
+						"$replaceM4WithConstant" \
+						"$replaceAwkWithConstant"
+				}>"$binPath"/"$shellScriptFile"
+				chmod 0755 "$destinationShellScriptFile"
+			done
+
+	
+			local replaceAcMacroDirWithVariable1="$(_libertine_compile_autoconf213_sed_replaceDoubleQuotedStringWithVariable datadir _program_AC_MACRODIR)"
+			local replaceAcMacroDirWithVariable2="$(_libertine_compile_autoconf213_sed_replaceSingleQuotedStringWithVariable datadir _program_AC_MACRODIR)"
+			local replacePerl4FindWithPerl5Module='s,^require "find\.pl";$,use File::Find;,g'
+	
+			local perlScriptFile
+			for perlScriptFile in autoscan
+			do
+				local destinationPerlScriptFile="$binPath"/"$perlScriptFile"
+				{
+					_libertine_compile_autoconf213_patchToMakePerlScriptRelative
+					tail -n +2 "$packageBuildFolderPath"/"$perlScriptFile".pl | _libertine_compile_autoconf213_sed \
+						"$replaceAcMacroDirWithVariable1" \
+						"$replaceAcMacroDirWithVariable2" \
+						"$replacePerl4FindWithPerl5Module"
+				}>"$binPath"/"$perlScriptFile"
+				chmod 0755 "$destinationPerlScriptFile"
+			done
+			
+			pushd "$packageBuildFolderPath"
+	
+				local shellParentFolderPath
+				case "$package" in
+		
+					build_*)
+						shellParentFolderPath="$(libertine_public_PATH)"
+					;;
+		
+					*)
+						shellParentFolderPath='/usr/bin'
+					;;
+		
+				esac
+				_libertine_compile_autoconf213_adjustShellPath "$shellParentFolderPath"
+				_libertine_compile_autoconf213_removeAbsolutePathsFromM4Macros
+				
+			popd
+	
+			local dataFile
+			for dataFile in acconfig.h acfunctions acgeneral.m4 acheaders acidentifiers acmakevars acoldnames.m4 acprograms acspecific.m4 autoconf.m4 autoheader.m4
+			do
+				local destinationDataFile="$acdatapath"/"$dataFile"
+				cat "$packageBuildFolderPath"/"$dataFile" >"$destinationDataFile"
+				chmod 0444 "$destinationDataFile"
+			done
+		}
+
+		build_needs sed
+		_libertine_compile_autoconf213_sed()
+		{
+			if [ $# -eq 0 ]; then
+				set --
+			else
+				local expression
+				local isFirst=true
+				for expression in "$@"
+				do
+					if $isFirst; then
+						set --
+						isFirst=false
+					fi
+					set -- "$@" -e "$expression"
+				done
+			fi
+	
+			sed "$@"
+		}
+
+		_libertine_compile_autoconf213_sed_replaceWithConstant()
+		{
+			local name="$1"
+			local constantValue="$2"
+	
+			printf 's,@%s@,%s,g' "$name" "$constantValue"
+		}
+
+		_libertine_compile_autoconf213_sed_replaceDoubleQuotedStringWithVariable()
+		{
+			local name="$1"
+			local variableName="$2"
+	
+			printf 's,"@%s@",\$%s,g' "$name" "$variableName"
+		}
+
+		_libertine_compile_autoconf213_sed_replaceSingleQuotedStringWithVariable()
+		{
+			local name="$1"
+			local variableName="$2"
+	
+			local singleQuote="'"
+			printf 's,%s@%s@%s,\$%s,g' "$singleQuote" "$name" "$singleQuote" "$variableName"
+		}
+
+		build_needs cat env sh
+		_libertine_compile_autoconf213_patchToMakeShellScriptRelative()
+		{
+			case "$package" in
+				
+				build_*)
+					local shaBang="$(libertine_public_PATH)/env sh"
+					local shell="$(libertine_public_PATH)"/sh
+				;;
+				
+				*)
+					local shaBang='/usr/bin/env sh'
+					local shell='/usr/bin/sh'
+				;;
+				
+			esac
+			
+			printf '#!%s\n' "$shaBang"
+			
+			
+			cat <<'EOF'
+
+# For bash
+(set -o posix) 1>/dev/null 2>/dev/null && set -o posix
+
+# For MKS Shell
+export DUALCASE=1
+
+# For zsh
+if [ -n "${ZSH_VERSION+set}" ]; then
+	emulate sh
+	NULLCMD=:
+	# Pre-4.2 versions of Zsh (superseded as of 2004-03-19) do word splitting on ${1+"$[@]"}, which is not wanted
+	[[alias -g ${1+"$[@]"}="$[@]"]]
+	setopt NO_GLOB_SUBST
+fi
+
+# Make sure IFS is set to something sensible
+IFS="$(printf ' \t\n')"
+
+# Make sure CDPATH doesn't interfere
+(unset CDPATH) 1>/dev/null 2>/dev/null && unset CDPATH
+
+# Find the absolute path containing this script
+_program_path_find()
+{
+	if [ "${0%/*}" = "$0" ]; then
+
+		# We've been invoked by the interpreter as, say, bash program
+		if [ -r "$0" ]; then
+			pwd -P
+		# Clutching at straws; probably run via a download, anonymous script, etc, weird execve, etc
+		else
+			printf '\n'
+		fi
+
+	else
+
+		# We've been invoked with a relative or absolute path (also when invoked via PATH in a shell)
+
+		_program_path_find_parentPath()
+		{
+			parentPath="${scriptPath%/*}"
+			if [ -z "$parentPath" ]; then
+				parentPath='/'
+			fi
+			cd "$parentPath" 1>/dev/null
+		}
+
+		if command -v realpath 1>/dev/null 2>/dev/null; then
+			(
+				scriptPath="$(realpath "$0")"
+	
+				_program_path_find_parentPath
+				pwd -P
+			)
+		elif command -v readlink 1>/dev/null 2>/dev/null; then
+			(
+				scriptPath="$0"
+	
+				while [ -L "$scriptPath" ]
+				do
+					_program_path_find_parentPath
+					scriptPath="$(readlink "$scriptPath")"
+				done
+
+				_program_path_find_parentPath
+				pwd -P
+			)
+		else
+			# This approach will fail in corner cases where the script itself is a symlink in a path not parallel with the concrete script
+			(
+				scriptPath="$0"
+	
+				_program_path_find_parentPath
+				pwd -P
+			)
+		fi
+
+	fi
+}
+_program_path="$(_program_path_find)"
+
+EOF
+		}
+
+		build_needs cat env perl sh
+		_libertine_compile_autoconf213_patchToMakePerlScriptRelative()
+		{
+			# This patch makes the perl script look for the 'share/autoconf' folder relative to the program itself
+			
+			case "$package" in
+				
+				build_*)
+					local shaBang="$(libertine_public_PATH)/env perl"
+					local shell="$(libertine_public_PATH)"/sh
+				;;
+				
+				*)
+					local shaBang='/usr/bin/env perl'
+					local shell='/usr/bin/sh'
+				;;
+				
+			esac
+			
+			printf '#!%s\n' "$shaBang"
+			
+			cat <<'EOF'
+
+no warnings "deprecated";
+
+use Cwd "abs_path";
+use File::Basename "fileparse";
+use File::Spec::Functions "updir", "catdir", "catfile";
+our $_program_AC_MACRODIR;
+BEGIN {
+
+	# fileparse is preferred to basename for portability as it includes a trailing '/' or '\'
+	my(undef, $_program_path, undef) = fileparse(abs_path(__FILE__));
+
+	$_program_AC_MACRODIR = catdir($_program_path, updir(), 'share', 'autoconf');
+}
+
+EOF
+		}
+
+		build_needs sed
+		_libertine_compile_autoconf213_adjustShellPath()
+		{
+			# eg /usr/bin
+			local absolutePathToParentFolderOfShell="$1"
+	
+			local absoluteShellPath="$absolutePathToParentFolderOfShell"/sh
+
+			pushd "$(libertine_public_sourcePath)"
+	
+				sed -i \
+					-e 's;CONFIG_SHELL-/bin/sh;CONFIG_SHELL-'"$absoluteShellPath"';g' \
+					acgeneral.m4
+	
+				sed -i \
+					-e 's;SHELL=/bin/sh;SHELL='"$absoluteShellPath"';g' \
+					acspecific.m4
+		
+			popd
+		}
+
+		build_needs sed env sh cat
+		_libertine_compile_autoconf213_removeAbsolutePathsFromM4Macros()
+		{
+			case "$package" in
+				
+				build_*)
+					local shaBang="$(libertine_public_PATH)/env sh"
+					local shaBangCat="$(libertine_public_PATH)/env cat"
+					local shell="$(libertine_public_PATH)"/sh
+				;;
+				
+				*)
+					local shaBang='/usr/bin/env sh'
+					local shaBangCat="/usr/bin/env cat"
+					local shell='/usr/bin/sh'
+				;;
+				
+			esac
+			
+			printf '#!%s\n' "$shaBang"
+			
+			pushd "$(libertine_public_sourcePath)"
+	
+				sed -i \
+					-e 's;! /bin/sh;!'"$shaBang"';g' \
+					acgeneral.m4
+				
+				sed -i \
+					-e 's;! /bin/cat;!'"$shaBangCat"';g' \
+					-e 's;AC_CHECK_PROG(CC, cc, cc, , , /usr/ucb/cc);AC_CHECK_PROG(CC, cc, cc);g' \
+					-e 's;/|./|.//|/etc/\*|/usr/sbin/\*|/usr/etc/\*|/sbin/\*|/usr/afsws/bin/\*|/usr/ucb/\*;/|./|.//|/usr/bin/*;g' \
+					-e 's;/usr/lib | /lib;/usr/lib;g' \
+					-e 's;/lib/cpp;cpp;g' \
+					-e '/^\/usr\/X11\/include/d' \
+					-e '/^\/usr\/X11R6\/include/d' \
+					-e '/^\/usr\/X11R5\/include/d' \
+					-e '/^\/usr\/X11R4\/include/d' \
+					-e '/^\/usr\/local\/X11\/include/d' \
+					-e '/^\/usr\/local\/X11R6\/include/d' \
+					-e '/^\/usr\/local\/X11R5\/include/d' \
+					-e '/^\/usr\/local\/X11R4\/include/d' \
+					-e '/^\/usr\/include\/X11/d' \
+					-e '/^\/usr\/include\/X11R6/d' \
+					-e '/^\/usr\/include\/X11R5/d' \
+					-e '/^\/usr\/include\/X11R4/d' \
+					-e '/^\/usr\/local\/include\/X11/d' \
+					-e '/^\/usr\/local\/include\/X11R6/d' \
+					-e '/^\/usr\/local\/include\/X11R5/d' \
+					-e '/^\/usr\/local\/include\/X11R4/d' \
+					-e '/^\/usr\/X386\/include/d' \
+					-e '/^\/usr\/x386\/include/d' \
+					-e '/^\/usr\/XFree86\/include\/X11/d' \
+					-e '/^\/usr\/include/d' \
+					-e '/^\/usr\/local\/include/d' \
+					-e '/^\/usr\/unsupported\/include/d' \
+					-e '/^\/usr\/athena\/include/d' \
+					-e '/^\/usr\/local\/x11r5\/include/d' \
+					-e '/^\/usr\/lpp\/Xamples\/include/d' \
+					-e '/^\/lib\/usr\/lib\/X11/d' \
+					-e '/^\/usr\/openwin\/lib/d' \
+					-e '/^\/usr\/openwin\/share\/lib/d' \
+					acspecific.m4
+		
+			popd
+		}
+		
+		case "$package" in
+			
+			build_autoconf213)
+					
+				libertine_compile_build_autoconf213()
+				{
+					_libertine_compile_autoconf213_internal "$(libertine_public_outputBuildSysrootPath)"
+				}
+			
+			;;
+			
+			autoconf213)
+				
+				depends build_autoconf213
+				
+				depends busybox
+		
+				libertine_compile_autoconf213()
+				{
+					_libertine_compile_autoconf213_internal "$(libertine_public_outputInitramfsPath)"
+				}
+				
+			;;
+			
+		esac
+		
+	;;
+	
+	build_autoconf264|autoconf264)
+	
+		variant=autoconf-2.64
+
+		build_needs mkdir tail chmod cat cp
+		_libertine_compile_autoconf264_internal()
+		{
+			_libertine_compile_autoconf_internal "$1" '2.64' '2009'
+		}
+		
+		case "$package" in
+			
+			build_autoconf264)
+			
+				libertine_compile_build_autoconf264()
+				{
+					_libertine_compile_autoconf264_internal "$(libertine_public_outputBuildSysrootPath)"
+				}
+				
+			;;
+			
+			autoconf264)
+			
+				depends build_autoconf264
+				
+				depends busybox
+				
+				depends perl
+				
+				libertine_compile_autoconf264()
+				{
+					_libertine_compile_autoconf264_internal "$(libertine_public_outputInitramfsPath)"
+				}
+			
+			;;
+			
+		esac
+	
+	;;
+	
+	build_autoconf|autoconf)
+
+		variant=autoconf-2.69-or-later-compatible
+
+		build_needs mkdir tail chmod cat cp
+		_libertine_compile_autoconf269_internal()
+		{
+			_libertine_compile_autoconf_internal "$1" '2.69' '2012'
+		}
+		
+		case "$package" in
+	
+			build_autoconf)
+					
+				build_provides autoconf autoheader autom4te autoreconf autoscan autoupdate ifnames
+		
+				libertine_compile_build_autoconf()
+				{
+					_libertine_compile_autoconf269_internal "$(libertine_public_outputBuildSysrootPath)"
+				}
+		
+			;;
+	
+			autoconf)
+				
+				depends build_autoconf
+				
+				depends busybox
+				
+				depends perl
+		
+				libertine_compile_autoconf()
+				{
+					_libertine_compile_autoconf269_internal "$(libertine_public_outputInitramfsPath)"
+				}
+		
+			;;
+			
+		esac
+		
+	;;
+	
+	
+esac
+
+build_needs sed
+_libertine_compile_autoconf26x_adjustShellPath()
+{
+	# eg /usr/bin
+	local absolutePathToParentFolderOfShell="$1"
+	
+	local absoluteShellPath="$absolutePathToParentFolderOfShell"/sh
+
+	pushd "$(libertine_public_sourcePath)"
+	
+		sed -i \
+			-e 's;CONFIG_SHELL-/bin/sh;CONFIG_SHELL-'"$absoluteShellPath"';g' \
+			-e "s,PATH='/bin;/bin',PATH='${absolutePathToParentFolderOfShell};${absolutePathToParentFolderOfShell}',g" \
+			-e "s;PATH='/bin:/bin';PATH='${absolutePathToParentFolderOfShell}:${absolutePathToParentFolderOfShell}';g" \
+			lib/m4sugar/m4sh.m4
+	
+		sed -i \
+			-e 's;SHELL = /bin/sh;SHELL = '"$absoluteShellPath"';g' \
+			lib/autoconf/programs.m4
+	
+		sed -i \
+			-e 's;SHELL=/bin/sh;SHELL='"$absoluteShellPath"';g' \
+			lib/autoconf/specific.m4
+	
+		sed -i \
+			-e 's;-/bin/sh;-'"$absoluteShellPath"';g' \
+			lib/autotest/general.m4
+		
+	popd
+}
+
+build_needs sed
+_libertine_compile_autoconf26x_removeAbsolutePathsFromM4Macros()
+{
+	pushd "$(libertine_public_sourcePath)"
+		
+		sed -i \
+			-e '/^\/usr\/X11\/include/d' \
+			-e '/^\/usr\/X11R7\/include/d' \
+			-e '/^\/usr\/X11R6\/include/d' \
+			-e '/^\/usr\/X11R5\/include/d' \
+			-e '/^\/usr\/X11R4\/include/d' \
+			-e '/^\/usr\/local\/X11\/include/d' \
+			-e '/^\/usr\/local\/X11R7\/include/d' \
+			-e '/^\/usr\/local\/X11R6\/include/d' \
+			-e '/^\/usr\/local\/X11R5\/include/d' \
+			-e '/^\/usr\/local\/X11R4\/include/d' \
+			-e '/^\/usr\/include\/X11/d' \
+			-e '/^\/usr\/include\/X11R7/d' \
+			-e '/^\/usr\/include\/X11R6/d' \
+			-e '/^\/usr\/include\/X11R5/d' \
+			-e '/^\/usr\/include\/X11R4/d' \
+			-e '/^\/usr\/local\/include\/X11/d' \
+			-e '/^\/usr\/local\/include\/X11R7/d' \
+			-e '/^\/usr\/local\/include\/X11R6/d' \
+			-e '/^\/usr\/local\/include\/X11R5/d' \
+			-e '/^\/usr\/local\/include\/X11R4/d' \
+			-e '/^\/usr\/X386\/include/d' \
+			-e '/^\/usr\/x386\/include/d' \
+			-e '/^\/usr\/XFree86\/include\/X11/d' \
+			-e '/^\/usr\/include/d' \
+			-e '/^\/usr\/local\/include/d' \
+			-e '/^\/usr\/unsupported\/include/d' \
+			-e '/^\/usr\/athena\/include/d' \
+			-e '/^\/usr\/local\/x11r5\/include/d' \
+			-e '/^\/usr\/lpp\/Xamples\/include/d' \
+			-e '/^\/usr\/openwin\/include/d' \
+			-e '/^\/usr\/openwin\/share\/include/d' \
+			lib/autoconf/libs.m4
+		
+		sed -i \
+			-e 's;AC_CHECK_PROG(CC, cc, cc, , , /usr/ucb/cc);AC_CHECK_PROG(CC, cc, cc);g' \
+			-e 's;/lib/cpp;cpp;g' \
+			lib/autoconf/c.m4
+	
+		sed -i \
+			-e 's;for ac_dir in . "\$TMPDIR" /tmp /var/tmp /usr/tmp "\$prefix/lib" "\$exec_prefix/lib";for ac_dir in . "$TMPDIR" /tmp /var/tmp /usr/tmp;g' \
+			-e 's;#! /bin/cat;#!'"$shaBangEnv"' cat;g' \
+			lib/autoconf/specific.m4
+	
+		sed -i \
+			-e 's;\$PATH\$PATH_SEPARATOR/usr/xpg4/bin;$PATH;g' \
+			-e 's;\$PATH\$PATH_SEPARATOR/opt/sfw/bin;$PATH;g' \
+			-e 's;/etc/\* | /usr/sbin/\* | /usr/etc/\* | /sbin/\* | /usr/afsws/bin/\* |;/usr/bin/* |;g' \
+			-e 's;/usr/ucb/\*;/usr/bin/\*;g' \
+			-e 's;for ac_prog in ginstall scoinst install;for ac_prog in install;g' \
+			lib/autoconf/programs.m4
+
+		case "$package" in
+			
+			build_*)
+				local shaBangEnv="$(libertine_public_PATH)/env"
+			;;
+			
+			*)
+				local shaBangEnv='/usr/bin/env'
+			;;
+			
+		esac
+		
+		sed -i \
+			-e 's;! /bin/sh;!'"$shaBangEnv"' sh;g' \
+			-e 's;/bin\$PATH_SEPARATOR/usr/bin\$PATH_SEPARATOR\$PATH;$PATH;g' \
+			-e 's;/usr/bin/uname;uname;g' \
+			-e 's;/bin/uname;uname;g' \
+			-e 's;/usr/bin/arch;arch;g' \
+			-e 's;/bin/arch;arch;g' \
+			-e 's;/bin/machine;machine;g' \
+			-e 's;/bin/universe;universe;g' \
+			-e 's;/usr/convex/getsysinfo;getsysinfo;g' \
+			-e 's;/usr/bin/hostinfo;hostinfo;g' \
+			-e 's;/usr/bin/oslevel;oslevel;g' \
+			lib/m4sugar/m4sh.m4
+	
+		sed -i \
+			-e 's;#! /bin/sh;#'"$shaBangEnv"' sh;g' \
+			lib/autotest/general.m4
+	
+		sed -i \
+			-e 's;!/bin/sh;!'"$shaBangEnv"' sh;g' \
+			lib/autoconf/erlang.m4
+		
+		sed -i \
+			-e 's;/usr/local/lib/foo;/usr/lib/foo;g' \
+			lib/autoconf/fortran.m4
+		
+	popd
+}
+
+build_needs sed
+_libertine_compile_autoconf26x_createAutom4teCfg()
+{
+	local destinationParentFolderPath="$1"
+	local packageDataDir="$2"
+	
+	# Sadly, this is hardcoded to an absolute path
+	sed -e "s;args: --prepend-include '@pkgdatadir@';args: --prepend-include '${packageDataDir}';g" "$inputShareFolderPath"/autom4te.in >"$destinationParentFolderPath"/autom4te.cfg
+}
+
+_libertine_compile_autoconf26x_createFrozenM4fFile()
+{
+	local destinationBinFolderPath="$1"
+	local shareDestinationFolderPath="$2"
+	local outputFrozenM4fFilePath="$3"
+	shift 3
+	
+	case "$package" in
+		
+		build_*)
+			local autom4teBinPath="$destinationBinFolderPath"/autom4te
+		;;
+		
+		*)
+			local autom4teBinPath="$(libertine_public_outputBuildSysrootPath build_"$package")"/usr/bin/autom4te
+		;;
+		
+	esac
+	
+	_libertine_compile_autoconf26x_createAutom4teCfg "$(libertine_public_outputMiscPath)" "$shareDestinationFolderPath"
+
+	autom4te_perllibdir="$shareDestinationFolderPath" AUTOM4TE_CFG="$(libertine_public_outputMiscPath)"/autom4te.cfg perl "$autom4teBinPath" --verbose --prepend-include="$shareDestinationFolderPath" --freeze --output="$outputFrozenM4fFilePath" "$@"
+}
+
+build_needs mkdir tail cat sed chmod
+_libertine_compile_autoconf_internal()
+{
+	local destinationFolderPath="$1"
+	local version="$2"
+	local year="$3"
+		
+	local destinationBinFolderPath="$destinationFolderPath"/usr/bin
+	mkdir -m 0755 -p "$destinationBinFolderPath"
+	
+	local inputBinariesFolderPath="$(libertine_public_sourcePath)"/bin
+	
+	case "$package" in
+		
+		build_*)
+			local shaBangEnv="$(libertine_public_PATH)/env"
+		;;
+	
+		*)
+			local shaBangEnv='/usr/bin/env'
+		;;
+		
+	esac
+	
+	local binaryFileName
+	for binaryFileName in autoheader autom4te autoreconf autoscan autoupdate ifnames
+	do
+		local inputFilePath="$inputBinariesFolderPath"/"$binaryFileName".in
+		local outputFilePath="$destinationBinFolderPath"/"$binaryFileName"
+		
+		# (1) cat: inject new logic that allows the script to become relative
+		# (2) tail: remove sha-bang line
+		#     - removes the space after sha-bang (it's a myth, see http://www.in-ulm.de/~mascheck/various/shebang/#details)
+		#     - Use of -w causes unnecessary warnings
+		#     - Can make the perl script find perl using #!/usr/bin/env perl via the PATH
+		# (3) sed: replace @xxxx@ template variables
+		#	(3.1) Replace @PERL@
+		#	(3.2) Replace @SHELL@; only used by DJGPP under DOS, so a hardcoded PATH is acceptable here
+		#   (3.3) Replace @PACKAGE_NAME@
+		#   (3.4) Replace @VERSION@
+		#   (3.5) Replace @RELEASE_YEAR@
+		#   (3.6) Replace @bindir@/@autoconf-name@ with just autoconf - this then finds autoconf via the PATH *
+		#   (3.7) Replace @bindir@/@autoheader-name@ with just autoheader - this then finds autoheader via the PATH *
+		#   (3.8) Replace @bindir@/@autom4te-name@ with just autom4te - this then finds autom4te via the PATH *
+		#   (3.9) Replace @M4@ with just m4 - this then finds m4 via the PATH
+		#   (3.9) Replace @M4_GNU@ with '--gnu' (supported by NetBSD m4)
+		#   (3.10) Replace @M4_DEBUGFILE@ with '--error-output' (supported by NetBSD m4)
+		#   (3.11) Replace '@pkgdatadir@' with a real variable
+		#   (3.12) Replace '@configure_input@' with a message
+		#   (3.13) Replace '@PERL_FLOCK@' with yes
+		#   * Which means it is possible to pick up a version of autoconf not part of this release. But we want path control.
+		{
+			printf '#!%s perl\n' "$shaBangEnv"
+			cat <<'EOF'
+
+use Cwd "abs_path";
+use File::Basename "fileparse";
+use File::Spec::Functions "updir", "catdir", "catfile";
+our $_program_bindir;
+our $_program_prefix;
+our $_program_autom4te_perllibdir;
+our $_program_autom4te;
+our $_program_autoconf;
+our $_program_autoheader;
+BEGIN {
+
+	# fileparse is preferred to basename for portability as it includes a trailing '/' or '\'
+	my(undef, $_program_path, undef) = fileparse(abs_path(__FILE__));
+
+	$_program_bindir = $_program_path;
+	$_program_prefix = catdir($_program_path, updir());
+	$_program_autom4te_perllibdir = catdir($_program_prefix, 'share', 'autoconf');
+	$_program_autom4te = catfile($_program_bindir, 'autom4te');
+	$_program_autoconf = catfile($_program_bindir, 'autoconf');
+	$_program_autoheader = catfile($_program_bindir, 'autoheader');
+}
+	
+EOF
+			tail -n +2 "$inputFilePath"
+		} >"$outputFilePath"
+		
+		sed -i -e 's;@PERL@;perl;g' "$outputFilePath"
+		sed -i -e 's;@SHELL@;/bin/sh;g' "$outputFilePath"
+		sed -i -e 's;@PACKAGE_NAME@;GNU Autoconf;g' "$outputFilePath"
+		sed -i -e 's;@VERSION@;'"$version"';g' "$outputFilePath"
+		sed -i -e 's;@RELEASE_YEAR@;'"$year"';g' "$outputFilePath"
+		sed -i -e 's;@bindir@/@autoconf-name@;autoconf;g' "$outputFilePath"
+		sed -i -e 's;@bindir@/@autoheader-name@;autoheader;g' "$outputFilePath"
+		sed -i -e 's;@bindir@/@autom4te-name@;autom4te;g' "$outputFilePath"
+		sed -i -e 's;@M4@;m4;g' "$outputFilePath"
+		sed -i -e 's;@M4_GNU@;--gnu;g' "$outputFilePath"
+		sed -i -e 's;@M4_DEBUGFILE@;--error-output;g' "$outputFilePath"
+		sed -i -e "s;'@pkgdatadir@';\$_program_autom4te_perllibdir;g" "$outputFilePath"
+		sed -i -e "s,@configure_input@,Generated from $binaryFileName.in; do not edit by hand.,g" "$outputFilePath"
+		sed -i -e 's;@PERL_FLOCK@;yes;g' "$outputFilePath"
+		
+		
+		# Fix autom4te so its configuration autom4te.cfg does not need to contain a hardcoded path for --prepend-include
+		if [ "$binaryFileName" = 'autom4te' ]; then
+			sed -i -e 's,my @prepend_include;,my @prepend_include = ($_program_autom4te_perllibdir);,g' "$outputFilePath"
+		fi
+		
+		chmod +x "$outputFilePath"
+		
+	done
+	
+	for binaryFileName in autoconf
+	do
+		#local inputFilePath="$inputBinariesFolderPath"/"$binaryFileName".as
+		local inputFilePath="$(libertine_public_packagePath)"/replacement-files/"$version"/"$binaryFileName"
+		local outputFilePath="$destinationBinFolderPath"/"$binaryFileName"
+		
+		sed \
+			-e 's;/usr/bin/autom4te;autom4te;g' \
+			"$inputFilePath" >"$outputFilePath"
+		
+		chmod +x "$outputFilePath"
+	done
+	
+	
+	local shellParentFolderPath
+	case "$package" in
+		
+		build_*)
+			shellParentFolderPath="$(libertine_public_PATH)"
+		;;
+		
+		*)
+			shellParentFolderPath='/usr/bin'
+		;;
+		
+	esac
+	_libertine_compile_autoconf26x_adjustShellPath "$shellParentFolderPath"
+	_libertine_compile_autoconf26x_removeAbsolutePathsFromM4Macros
+	
+	
+	local shareDestinationFolderPath="$destinationFolderPath"/usr/share/autoconf
+	mkdir -m 0755 -p "$shareDestinationFolderPath"
+	local inputShareFolderPath="$(libertine_public_sourcePath)"/lib
+	
+	
+	cp "$(libertine_public_packagePath)"/replacement-files/"$version"/INSTALL "$shareDestinationFolderPath"
+	
+	
+	# Yes, it's usr/share/autoconf/autoconf (sic)
+	local autoconfM4LibraryFolderPath="$shareDestinationFolderPath"/autoconf
+	mkdir -m 0755 -p "$autoconfM4LibraryFolderPath"
+	set +f
+		cp "$inputShareFolderPath"/autoconf/*.m4 "$autoconfM4LibraryFolderPath"
+	set -f
+	
+
+	local autom4tePerlLibraryFolderPath="$shareDestinationFolderPath"/Autom4te
+	mkdir -m 0755 -p "$autom4tePerlLibraryFolderPath"
+	set +f
+		cp "$inputShareFolderPath"/Autom4te/*.pm "$autom4tePerlLibraryFolderPath"
+	set -f
+	
+
+	local autotestM4LibraryFolderPath="$shareDestinationFolderPath"/autotest
+	mkdir -m 0755 -p "$autotestM4LibraryFolderPath"
+	set +f
+		cp "$inputShareFolderPath"/autotest/*.m4 "$autotestM4LibraryFolderPath"
+	set -f
+	
+	
+	local m4SugarLibraryFolderPath="$shareDestinationFolderPath"/m4sugar
+	mkdir -m 0755 -p "$m4SugarLibraryFolderPath"
+	set +f
+		cp "$inputShareFolderPath"/m4sugar/*.m4 "$m4SugarLibraryFolderPath"
+	set -f
+	cat >"$m4SugarLibraryFolderPath"/version.m4 <<-EOF
+		# This file is part of -*- Autoconf -*-.
+		# Version of Autoconf.
+		# Copyright (C) 1999-${year}
+		# Free Software Foundation, Inc.
+
+		m4_define([m4_PACKAGE_NAME],      [GNU Autoconf])
+		m4_define([m4_PACKAGE_TARNAME],   [autoconf])
+		m4_define([m4_PACKAGE_VERSION],   [${version}])
+		m4_define([m4_PACKAGE_STRING],    [GNU Autoconf ${version}])
+		m4_define([m4_PACKAGE_BUGREPORT], [bug-autoconf@gnu.org])
+		m4_define([m4_PACKAGE_URL],       [http://www.gnu.org/software/autoconf/])
+		m4_define([m4_PACKAGE_YEAR],      [${year}])
+	EOF
+	
+
+	local autoscanLibraryFolderPath="$shareDestinationFolderPath"/autoscan
+	mkdir -m 0755 -p "$autoscanLibraryFolderPath"
+	set +f
+		cp "$(libertine_public_packagePath)"/replacement-files/"$version"/autoscan.list "$autoscanLibraryFolderPath"
+	set -f
+	
+	local packageDataDir
+	case "$package" in
+		
+		build_*)
+			packageDataDir="$shareDestinationFolderPath"
+		;;
+		
+		*)
+			packageDataDir='/usr/share/autoconf'
+		;;
+		
+	esac
+	
+	_libertine_compile_autoconf26x_createAutom4teCfg "$shareDestinationFolderPath" "$packageDataDir"
+	
+	if [ -e "$HOME"/.autom4te.cfg ]; then
+		core_exitError $core_commandLine_exitCode_CONFIG "Please remove '$HOME/.autom4te.cfg', as it interferes with build isolation"
+	fi
+	
+	_libertine_compile_autoconf26x_createFrozenM4fFile "$destinationBinFolderPath" "$shareDestinationFolderPath" "$m4SugarLibraryFolderPath"/m4sugar.m4f \
+		"$m4SugarLibraryFolderPath"/m4sugar.m4
+	
+	_libertine_compile_autoconf26x_createFrozenM4fFile "$destinationBinFolderPath" "$shareDestinationFolderPath" "$m4SugarLibraryFolderPath"/m4sh.m4f \
+		"$m4SugarLibraryFolderPath"/m4sugar.m4f "$m4SugarLibraryFolderPath"/m4sh.m4
+		
+	_libertine_compile_autoconf26x_createFrozenM4fFile "$destinationBinFolderPath" "$shareDestinationFolderPath" "$autotestM4LibraryFolderPath"/autotest.m4f \
+		"$m4SugarLibraryFolderPath"/m4sugar.m4f "$m4SugarLibraryFolderPath"/m4sh.m4f "$autotestM4LibraryFolderPath"/autotest.m4
+	
+	_libertine_compile_autoconf26x_createFrozenM4fFile "$destinationBinFolderPath" "$shareDestinationFolderPath" "$autoconfM4LibraryFolderPath"/autoconf.m4f \
+		 "$m4SugarLibraryFolderPath"/m4sugar.m4f "$m4SugarLibraryFolderPath"/m4sh.m4f "$autoconfM4LibraryFolderPath"/autoconf.m4
+}
