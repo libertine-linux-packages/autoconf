@@ -27,6 +27,8 @@ case "$package" in
 		
 		variant=autoconf-2.13
 		
+		copy_subset="$variant"
+		
 		build_needs mkdir tail chmod cat
 		_libertine_compile_autoconf213_internal()
 		{
@@ -418,6 +420,8 @@ EOF
 	build_autoconf264|autoconf264)
 	
 		variant=autoconf-2.64
+		
+		copy_subset="$variant replacement-files"
 
 		build_needs mkdir tail chmod cat cp
 		_libertine_compile_autoconf264_internal()
@@ -458,6 +462,8 @@ EOF
 	build_autoconf|autoconf)
 
 		variant=autoconf-2.69-or-later-compatible
+		
+		copy_subset="$variant replacement-files"
 
 		build_needs mkdir tail chmod cat cp
 		_libertine_compile_autoconf269_internal()
