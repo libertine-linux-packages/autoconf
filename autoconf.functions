@@ -88,7 +88,7 @@ case "$package" in
 				case "$package" in
 		
 					build_*)
-						shellParentFolderPath="$(libertine_public_PATH)"
+						shellParentFolderPath="$(libertine_public_buildNeedsPath)"
 					;;
 		
 					*)
@@ -162,8 +162,8 @@ case "$package" in
 			case "$package" in
 				
 				build_*)
-					local shaBang="$(libertine_public_PATH)/env sh"
-					local shell="$(libertine_public_PATH)"/sh
+					local shaBang="$(libertine_public_buildNeedsPath)/env sh"
+					local shell="$(libertine_public_buildNeedsPath)"/sh
 				;;
 				
 				*)
@@ -270,8 +270,8 @@ EOF
 			case "$package" in
 				
 				build_*)
-					local shaBang="$(libertine_public_PATH)/env perl"
-					local shell="$(libertine_public_PATH)"/sh
+					local shaBang="$(libertine_public_buildNeedsPath)/env perl"
+					local shell="$(libertine_public_buildNeedsPath)"/sh
 				;;
 				
 				*)
@@ -329,9 +329,9 @@ EOF
 			case "$package" in
 				
 				build_*)
-					local shaBang="$(libertine_public_PATH)/env sh"
-					local shaBangCat="$(libertine_public_PATH)/env cat"
-					local shell="$(libertine_public_PATH)"/sh
+					local shaBang="$(libertine_public_buildNeedsPath)/env sh"
+					local shaBangCat="$(libertine_public_buildNeedsPath)/env cat"
+					local shell="$(libertine_public_buildNeedsPath)"/sh
 				;;
 				
 				*)
@@ -597,7 +597,7 @@ _libertine_compile_autoconf26x_removeAbsolutePathsFromM4Macros()
 		case "$package" in
 			
 			build_*)
-				local shaBangEnv="$(libertine_public_PATH)/env"
+				local shaBangEnv="$(libertine_public_buildNeedsPath)/env"
 			;;
 			
 			*)
@@ -684,7 +684,7 @@ _libertine_compile_autoconf_internal()
 	case "$package" in
 		
 		build_*)
-			local shaBangEnv="$(libertine_public_PATH)/env"
+			local shaBangEnv="$(libertine_public_buildNeedsPath)/env"
 		;;
 	
 		*)
@@ -793,7 +793,7 @@ EOF
 	case "$package" in
 		
 		build_*)
-			shellParentFolderPath="$(libertine_public_PATH)"
+			shellParentFolderPath="$(libertine_public_buildNeedsPath)"
 		;;
 		
 		*)
