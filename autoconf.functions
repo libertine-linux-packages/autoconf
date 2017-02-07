@@ -9,6 +9,8 @@ build_needs perl
 depends build_gnum4
 build_needs m4
 
+depends build_busybox
+
 case "$package" in
 	
 	build_*)
