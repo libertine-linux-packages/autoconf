@@ -1,6 +1,16 @@
+Updating origin
+https://github.com/libertine-linux-mirrors/autoconf-2.69-or-later-compatible
+Branch 'master' set up to track remote branch 'master' from 'origin'.
 [submodule "autoconf-2.69-or-later-compatible"]
 	path = autoconf-2.69-or-later-compatible
-	url = git://git.sv.gnu.org/autoconf
+	url = https://github.com/libertine-linux-mirrors/autoconf-2.69-or-later-compatible.git
+	branch = master
+	libertine-linux-upstream = git://git.sv.gnu.org/autoconf
+Updating origin
+https://github.com/libertine-linux-mirrors/autoconf-2.64
+Branch 'master' set up to track remote branch 'master' from 'origin'.
 [submodule "autoconf-2.64"]
 	path = autoconf-2.64
-	url = git://git.sv.gnu.org/autoconf
+	url = https://github.com/libertine-linux-mirrors/autoconf-2.64.git
+	branch = master
+	libertine-linux-upstream = git://git.sv.gnu.org/autoconf
