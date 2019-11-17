@@ -2,11 +2,14 @@
 	path = autoconf-2.69-or-later-compatible
 	url = https://github.com/libertine-linux-mirrors/autoconf-2.69-or-later-compatible.git
 	branch = master
+	update = checkout
+	ignore = none
+	fetchRecurseSubmodules = true
+	shallow = true
 [submodule "autoconf-2.64"]
 	path = autoconf-2.64
 	url = https://github.com/libertine-linux-mirrors/autoconf-2.64.git
 	branch = master
-[submodule "autoconf-2"]
 	update = checkout
 	ignore = none
 	fetchRecurseSubmodules = true
