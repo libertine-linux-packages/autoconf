@@ -5,7 +5,7 @@
 	update = checkout
 	ignore = none
 	fetchRecurseSubmodules = true
-	shallow = true
+	shallow = false
 [submodule "autoconf-2.64"]
 	path = autoconf-2.64
 	url = https://github.com/libertine-linux-mirrors/autoconf-2.64.git
@@ -13,4 +13,4 @@
 	update = checkout
 	ignore = none
 	fetchRecurseSubmodules = true
-	shallow = true
+	shallow = false
