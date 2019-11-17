@@ -6,3 +6,8 @@
 	path = autoconf-2.64
 	url = https://github.com/libertine-linux-mirrors/autoconf-2.64.git
 	branch = master
+[submodule "autoconf-2"]
+	update = checkout
+	ignore = none
+	fetchRecurseSubmodules = true
+	shallow = true
